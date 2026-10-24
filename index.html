@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="referrer" content="no-referrer"> 
     <title>Таро Расклад</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://unpkg.com/@vkontakte/vk-bridge@2.15.0/dist/browser.min.js"></script>
     <style>
     body {
         font-family: 'Segoe UI', sans-serif;
@@ -124,8 +124,8 @@
     <button id="confirm-btn">ПОДТВЕРДИТЬ ВЫБОР</button>
 
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
+        vkBridge.send('VKWebAppInit')
+        .catch(console.error);
 
         const imgBase = "https://raw.githubusercontent.com/LindseyB/tarot-api/master/public/cards/";
         const deck = [];
@@ -186,18 +186,46 @@
         });
 
         btn.onclick = async () => {
-            btn.disabled = true;
-            btn.innerText = "ОТПРАВКА...";
-            const userId = tg.initDataUnsafe?.user?.id || "test_user";
-            const scriptURL = "https://script.google.com/macros/s/AKfycbyD0tPoh7h1YNWAiASIyux-FiQKGO6aZidwS7ltlk991ve1_NGJpoPF46IuUp6maDbJ/exec";
-            try {
-                await fetch(`${scriptURL}?user_id=${userId}&cards=${encodeURIComponent(selected.join(", "))}`, { mode: 'no-cors' });
-                tg.close();
-            } catch(e) {
-                btn.disabled = false;
-                btn.innerText = "ПОДТВЕРДИТЬ ВЫБОР";
+    if (selected.length !== 3) return;
+
+    btn.disabled = true;
+    btn.innerText = "ОТПРАВКА...";
+
+    // Замени число на ID своего VK-сообщества
+    const GROUP_ID = 193547238;
+
+    try {
+        // Просим разрешить сообщения от сообщества
+        await vkBridge.send(
+            'VKWebAppAllowMessagesFromGroup',
+            { group_id: GROUP_ID }
+        );
+
+        // Передаём выбранные карты в бота
+        await vkBridge.send(
+            'VKWebAppSendPayload',
+            {
+                group_id: GROUP_ID,
+                payload: {
+                    action: "tarot_selection",
+                    cards: selected
+                }
             }
-        };
+        );
+
+        btn.innerText = "КАРТЫ ОТПРАВЛЕНЫ ✓";
+
+    } catch (error) {
+        console.error(error);
+        btn.disabled = false;
+        btn.innerText = "ПОДТВЕРДИТЬ ВЫБОР";
+
+        alert(
+            "Не получилось отправить карты. " +
+            "Разреши сообщения сообщества и попробуй снова."
+        );
+    }
+};
     </script>
 </body>
 </html>
