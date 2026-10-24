@@ -185,47 +185,45 @@
             grid.appendChild(container);
         });
 
-        btn.onclick = async () => {
+       
+btn.onclick = async () => {
     if (selected.length !== 3) return;
 
     btn.disabled = true;
     btn.innerText = "ОТПРАВКА...";
 
-    // Замени число на ID своего VK-сообщества
-    const GROUP_ID = 193547238;
+    const scriptURL = "https://script.google.com/macros/s/AKfycbyD0tPoh7h1YNWAiASIyux-FiQKGO6aZidwS7ltlk991ve1_NGJpoPF46IuUp6maDbJ/exec";
 
     try {
-        // Просим разрешить сообщения от сообщества
-        await vkBridge.send(
-            'VKWebAppAllowMessagesFromGroup',
-            { group_id: GROUP_ID }
+        const user = await vkBridge.send(
+            "VKWebAppGetUserInfo"
         );
 
-        // Передаём выбранные карты в бота
-        await vkBridge.send(
-            'VKWebAppSendPayload',
-            {
-                group_id: GROUP_ID,
-                payload: {
-                    action: "tarot_selection",
-                    cards: selected
-                }
-            }
-        );
+        const userId = user.id;
+
+        const url = new URL(scriptURL);
+
+        url.searchParams.set("user_id", userId);
+        url.searchParams.set("cards", selected.join(", "));
+
+        await fetch(url.toString(), {
+            method: "GET",
+            mode: "no-cors",
+            cache: "no-store"
+        });
 
         btn.innerText = "КАРТЫ ОТПРАВЛЕНЫ ✓";
 
     } catch (error) {
-        console.error(error);
+        console.error("Ошибка:", error);
+
         btn.disabled = false;
         btn.innerText = "ПОДТВЕРДИТЬ ВЫБОР";
 
-        alert(
-            "Не получилось отправить карты. " +
-            "Разреши сообщения сообщества и попробуй снова."
-        );
+        alert("Не удалось отправить карты. Попробуй снова.");
     }
 };
+
     </script>
 </body>
 </html>
