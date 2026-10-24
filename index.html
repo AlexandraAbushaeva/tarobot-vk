@@ -239,6 +239,11 @@ btn.onclick = async () => {
         });
 
         btn.innerText = "КАРТЫ ОТПРАВЛЕНЫ ✓";
+
+        // Перезапускаем приложение после отправки
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
         readingCompleted = true;
 
     } catch (error) {
