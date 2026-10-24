@@ -1,11 +1,14 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="referrer" content="no-referrer"> 
+    <meta name="referrer" content="no-referrer">
     <title>Карта Дня</title>
+
     <script src="https://unpkg.com/@vkontakte/vk-bridge@2.15.0/dist/browser.min.js"></script>
+
     <style>
     body {
         font-family: 'Segoe UI', sans-serif;
@@ -21,8 +24,8 @@
         overflow: hidden;
     }
 
-    h3 { 
-        text-transform: uppercase; 
+    h3 {
+        text-transform: uppercase;
         text-shadow: 0 0 10px rgba(255, 215, 0, 0.5), 2px 2px 4px black;
         margin-bottom: 25px;
         letter-spacing: 2px;
@@ -31,7 +34,7 @@
 
     .grid {
         display: grid;
-        grid-template-columns: repeat(3, 90px); /* Три карты в один ряд */
+        grid-template-columns: repeat(3, 90px);
         gap: 20px 15px;
         justify-content: center;
     }
@@ -52,8 +55,8 @@
         box-shadow: 0 0 25px rgba(255, 215, 0, 0.4);
     }
 
-    .card-container.flipped { 
-        transform: rotateY(180deg); 
+    .card-container.flipped {
+        transform: rotateY(180deg);
         box-shadow: 0 0 25px rgba(255, 215, 0, 0.7);
     }
 
@@ -108,9 +111,14 @@
         cursor: pointer;
     }
 
-    .locked { opacity: 0.4; filter: grayscale(0.8); pointer-events: none; }
-</style>
+    .locked {
+        opacity: 0.4;
+        filter: grayscale(0.8);
+        pointer-events: none;
+    }
+    </style>
 </head>
+
 <body>
 
     <h3 id="header">Выберите карту</h3>
@@ -118,86 +126,174 @@
     <button id="confirm-btn">УЗНАТЬ РЕЗУЛЬТАТ</button>
 
     <script>
-        vkBridge.send('VKWebAppInit').catch(console.error);
+        // Инициализация VK Mini App
+        vkBridge.send('VKWebAppInit')
+            .catch(console.error);
 
+        // Google Apps Script
+        const scriptURL = "https://script.google.com/macros/s/AKfycbyD0tPoh7h1YNWAiASIyux-FiQKGO6aZidwS7ltlk991ve1_NGJpoPF46IuUp6maDbJ/exec";
+
+        // Изображения карт
         const imgBase = "https://raw.githubusercontent.com/LindseyB/tarot-api/master/public/cards/";
+
         const deck = [];
-        
+
         const majors = [
-            {n:"Шут", f:"TheFool"}, {n:"Маг", f:"TheMagician"}, {n:"Жрица", f:"TheHighPriestess"},
-            {n:"Императрица", f:"TheEmpress"}, {n:"Император", f:"TheEmperor"}, {n:"Иерофант", f:"TheHierophant"},
-            {n:"Влюбленные", f:"TheLovers"}, {n:"Колесница", f:"TheChariot"}, {n:"Сила", f:"Strength"},
-            {n:"Отшельник", f:"TheHermit"}, {n:"Колесо Фортуны", f:"WheelOfFortune"}, {n:"Справедливость", f:"Justice"},
-            {n:"Повешенный", f:"TheHangedMan"}, {n:"Смерть", f:"Death"}, {n:"Умеренность", f:"Temperance"},
-            {n:"Дьявол", f:"TheDevil"}, {n:"Башня", f:"TheTower"}, {n:"Звезда", f:"TheStar"},
-            {n:"Луна", f:"TheMoon"}, {n:"Солнце", f:"TheSun"}, {n:"Суд", f:"Judgement"}, {n:"Мир", f:"TheWorld"}
+            {n:"Шут", f:"TheFool"},
+            {n:"Маг", f:"TheMagician"},
+            {n:"Жрица", f:"TheHighPriestess"},
+            {n:"Императрица", f:"TheEmpress"},
+            {n:"Император", f:"TheEmperor"},
+            {n:"Иерофант", f:"TheHierophant"},
+            {n:"Влюбленные", f:"TheLovers"},
+            {n:"Колесница", f:"TheChariot"},
+            {n:"Сила", f:"Strength"},
+            {n:"Отшельник", f:"TheHermit"},
+            {n:"Колесо Фортуны", f:"WheelOfFortune"},
+            {n:"Справедливость", f:"Justice"},
+            {n:"Повешенный", f:"TheHangedMan"},
+            {n:"Смерть", f:"Death"},
+            {n:"Умеренность", f:"Temperance"},
+            {n:"Дьявол", f:"TheDevil"},
+            {n:"Башня", f:"TheTower"},
+            {n:"Звезда", f:"TheStar"},
+            {n:"Луна", f:"TheMoon"},
+            {n:"Солнце", f:"TheSun"},
+            {n:"Суд", f:"Judgement"},
+            {n:"Мир", f:"TheWorld"}
         ];
-        majors.forEach(m => deck.push({ name: m.n, img: m.f + ".png" }));
 
-        const suits = [
-            {id:"Wands", ru:"Жезлов"}, {id:"Cups", ru:"Кубков"}, 
-            {id:"Swords", ru:"Мечей"}, {id:"Pentacles", ru:"Пентаклей"}
-        ];
-        const rankFiles = ["01","02","03","04","05","06","07","08","09","10","11","12","13","14"];
-        const rankNames = ["Туз","2","3","4","5","6","7","8","9","10","Паж","Рыцарь","Королева","Король"];
-
-        suits.forEach(suit => {
-            rankFiles.forEach((f, i) => {
-                deck.push({ name: rankNames[i] + " " + suit.ru, img: suit.id + f + ".png" });
+        majors.forEach(m => {
+            deck.push({
+                name: m.n,
+                img: m.f + ".png"
             });
         });
 
-        // ДЛЯ КАРТЫ ДНЯ БЕРЕМ 3 КАРТЫ НА ВЫБОР
-        const shuffled = deck.sort(() => 0.5 - Math.random()).slice(0, 3);
-        let selected = [];
-        const grid = document.getElementById('grid');
-        const btn = document.getElementById('confirm-btn');
+        const suits = [
+            {id:"Wands", ru:"Жезлов"},
+            {id:"Cups", ru:"Кубков"},
+            {id:"Swords", ru:"Мечей"},
+            {id:"Pentacles", ru:"Пентаклей"}
+        ];
 
-        shuffled.forEach(card => {
-            const container = document.createElement('div');
-            container.className = 'card-container';
-            const finalImgUrl = imgBase + card.img + "?v=1";
+        const rankFiles = [
+            "01","02","03","04","05","06","07",
+            "08","09","10","11","12","13","14"
+        ];
 
-            container.innerHTML = `
-                <div class="card-face card-front"></div>
-                <div class="card-face card-back" style="background-image: url('${finalImgUrl}')">
-                    <div class="card-name-tag">${card.name}</div>
-                </div>
-            `;
-            
-            container.onclick = () => {
-                // ЛОГИКА ДЛЯ ОДНОЙ КАРТЫ
-                if (selected.length < 1 && !container.classList.contains('flipped')) {
-                    container.classList.add('flipped');
-                    selected.push(card.name);
-                    
-                    // Показываем кнопку
-                    btn.style.display = 'block';
-                    document.getElementById('header').innerText = "Ваша карта выбрана";
-                    
-                    // Блокируем остальные карты
-                    document.querySelectorAll('.card-container:not(.flipped)').forEach(c => c.classList.add('locked'));
-                }
-            };
-            grid.appendChild(container);
+        const rankNames = [
+            "Туз","2","3","4","5","6","7",
+            "8","9","10","Паж","Рыцарь","Королева","Король"
+        ];
+
+        suits.forEach(suit => {
+            rankFiles.forEach((f, i) => {
+                deck.push({
+                    name: rankNames[i] + " " + suit.ru,
+                    img: suit.id + f + ".png"
+                });
+            });
         });
 
+        const grid = document.getElementById('grid');
+        const btn = document.getElementById('confirm-btn');
+        const header = document.getElementById('header');
+
+        let selected = [];
+        let isSending = false;
+
+        // Случайно выбираем три карты из колоды
+        function shuffleDeck() {
+            const cards = [...deck];
+
+            for (let i = cards.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+
+                [cards[i], cards[j]] = [cards[j], cards[i]];
+            }
+
+            return cards.slice(0, 3);
+        }
+
+        // Создание нового выбора
+        function resetCards() {
+            selected = [];
+            isSending = false;
+
+            grid.innerHTML = "";
+
+            header.innerText = "Выберите карту";
+
+            btn.style.display = "none";
+            btn.disabled = false;
+            btn.innerText = "УЗНАТЬ РЕЗУЛЬТАТ";
+
+            const shuffled = shuffleDeck();
+
+            shuffled.forEach(card => {
+                const container = document.createElement('div');
+                container.className = 'card-container';
+
+                const finalImgUrl = imgBase + card.img + "?v=1";
+
+                container.innerHTML = `
+                    <div class="card-face card-front"></div>
+                    <div class="card-face card-back" style="background-image: url('${finalImgUrl}')">
+                        <div class="card-name-tag">${card.name}</div>
+                    </div>
+                `;
+
+                container.onclick = () => {
+                    if (isSending) return;
+
+                    if (
+                        selected.length < 1 &&
+                        !container.classList.contains('flipped')
+                    ) {
+                        container.classList.add('flipped');
+                        selected.push(card.name);
+
+                        btn.style.display = 'block';
+                        header.innerText = "Ваша карта выбрана";
+
+                        document.querySelectorAll(
+                            '.card-container:not(.flipped)'
+                        ).forEach(c => {
+                            c.classList.add('locked');
+                        });
+                    }
+                };
+
+                grid.appendChild(container);
+            });
+        }
+
+        // Отправка выбранной карты
         btn.onclick = async () => {
-            if (selected.length !== 1) return;
+            if (selected.length !== 1 || isSending) return;
+
+            isSending = true;
+
             btn.disabled = true;
             btn.innerText = "ОТПРАВКА...";
 
-            // Вставь сюда URL /exec именно VK-версии Google Apps Script.
-            const scriptURL = "https://script.google.com/macros/s/AKfycbyD0tPoh7h1YNWAiASIyux-FiQKGO6aZidwS7ltlk991ve1_NGJpoPF46IuUp6maDbJ/exec";
-
             try {
-                if (!scriptURL.startsWith("https://script.google.com/macros/s/") || !scriptURL.endsWith("/exec")) {
-                    throw new Error("Сначала укажи URL Google Apps Script для VK");
+                const user = await vkBridge.send(
+                    "VKWebAppGetUserInfo"
+                );
+
+                const userId = user.id;
+
+                if (!userId) {
+                    throw new Error("Не получен VK ID");
                 }
-                const user = await vkBridge.send("VKWebAppGetUserInfo");
+
                 const url = new URL(scriptURL);
-                url.searchParams.set("user_id", String(user.id));
+
+                url.searchParams.set("user_id", String(userId));
                 url.searchParams.set("cards", selected[0]);
+                url.searchParams.set("_t", String(Date.now()));
 
                 await fetch(url.toString(), {
                     method: "GET",
@@ -206,25 +302,41 @@
                 });
 
                 btn.innerText = "КАРТА ОТПРАВЛЕНА ✓";
-                // Сбрасываем выбор после отправки
-                selected = [];
-                
-                document.getElementById('header').innerText = "Выберите карту";
-                
-                document.querySelectorAll('.card-container').forEach(card => {
-                    card.classList.remove('flipped', 'locked');
-                });
-                
-                btn.style.display = "none";
-                btn.disabled = false;
-                btn.innerText = "УЗНАТЬ РЕЗУЛЬТАТ";
+
+                // Подготавливаем новый выбор
+                resetCards();
+
+                // Пытаемся закрыть VK Mini App
+                try {
+                    await vkBridge.send("VKWebAppClose", {
+                        status: "success"
+                    });
+                } catch (closeError) {
+                    console.warn(
+                        "VK не закрыл приложение:",
+                        closeError
+                    );
+                }
+
             } catch (error) {
-                console.error("Не удалось отправить карту:", error);
+                console.error(
+                    "Не удалось отправить карту:",
+                    error
+                );
+
+                isSending = false;
                 btn.disabled = false;
                 btn.innerText = "УЗНАТЬ РЕЗУЛЬТАТ";
-                alert("Не удалось отправить карту. Попробуй снова.");
+
+                alert(
+                    "Не удалось отправить карту. Попробуй снова."
+                );
             }
         };
+
+        // Первый запуск
+        resetCards();
+
     </script>
 </body>
 </html>
