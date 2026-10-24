@@ -163,6 +163,27 @@
         let selected = [];
         const grid = document.getElementById('grid');
         const btn = document.getElementById('confirm-btn');
+         selected = [];
+        grid.innerHTML = "";
+    
+        btn.style.display = "none";
+        btn.disabled = false;
+        btn.innerText = "ПОДТВЕРДИТЬ ВЫБОР";
+    
+        window.location.reload();
+    }
+    
+    vkBridge.subscribe((event) => {
+        if (event.detail.type === "VKWebAppViewRestore") {
+            resetCards();
+        }
+    });
+    
+    window.addEventListener("pageshow", (event) => {
+        if (event.persisted) {
+            resetCards();
+        }
+    });
 
         shuffled.forEach(card => {
             const container = document.createElement('div');
@@ -218,6 +239,7 @@ btn.onclick = async () => {
         });
 
         btn.innerText = "КАРТЫ ОТПРАВЛЕНЫ ✓";
+        readingCompleted = true;
 
     } catch (error) {
         console.error("Ошибка:", error);
