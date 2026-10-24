@@ -135,13 +135,23 @@
 
     <script>
 
-    // Переход на страницу одной карты
-    if (window.location.hash === "#one") {
-        const target = new URL("one-card.html", window.location.href);
-        target.search = window.location.search;
-        target.hash = "";
-        window.location.replace(target.toString());
-    }
+    // Один VK Mini App — два режима выбора.
+    // VK может передать параметр запуска через hash или vk_app_start_param.
+    const launchParams = new URLSearchParams(window.location.search);
+    const launchHash = decodeURIComponent(window.location.hash.slice(1)).toLowerCase();
+    const launchMode = (
+        launchParams.get("vk_app_start_param") ||
+        launchParams.get("vk_start_param") ||
+        launchParams.get("mode") ||
+        launchHash
+    ).toLowerCase();
+
+    const isOneCard = launchMode === "one" || launchMode === "onecard";
+    const cardsToSelect = isOneCard ? 1 : 3;
+    const cardsToShow = isOneCard ? 3 : 5;
+
+    const header = document.querySelector("h3");
+    header.innerText = isOneCard ? "Выберите карту" : "Выберите 3 карты";
 
     // Инициализация VK Mini App
     vkBridge.send('VKWebAppInit')
@@ -218,7 +228,6 @@
 
     let selected = [];
     let isSending = false;
-    let resetTimer = null;
 
     // Перемешивание полной колоды
     function shuffleDeck() {
@@ -230,16 +239,11 @@
             [cards[i], cards[j]] = [cards[j], cards[i]];
         }
 
-        return cards.slice(0, 5);
+        return cards.slice(0, cardsToShow);
     }
 
     // Создание нового расклада
     function resetCards() {
-
-        if (resetTimer !== null) {
-            clearTimeout(resetTimer);
-            resetTimer = null;
-        }
 
         selected = [];
         isSending = false;
@@ -248,7 +252,7 @@
 
         btn.style.display = "none";
         btn.disabled = false;
-        btn.innerText = "ПОДТВЕРДИТЬ ВЫБОР";
+        btn.innerText = isOneCard ? "УЗНАТЬ РЕЗУЛЬТАТ" : "ПОДТВЕРДИТЬ ВЫБОР";
 
         const shuffled = shuffleDeck();
 
@@ -272,7 +276,7 @@
                 if (isSending) return;
 
                 if (
-                    selected.length < 3 &&
+                    selected.length < cardsToSelect &&
                     !container.classList.contains('flipped')
                 ) {
 
@@ -280,7 +284,7 @@
 
                     selected.push(card.name);
 
-                    if (selected.length === 3) {
+                    if (selected.length === cardsToSelect) {
 
                         btn.style.display = 'block';
 
@@ -300,7 +304,7 @@
     // Отправка выбора в Google Apps Script
     btn.onclick = async () => {
 
-        if (selected.length !== 3 || isSending) return;
+        if (selected.length !== cardsToSelect || isSending) return;
 
         isSending = true;
 
@@ -333,7 +337,7 @@
 
             btn.innerText = "КАРТЫ ОТПРАВЛЕНЫ ✓";
 
-            // Сбрасываем карты перед закрытием
+            // Подготавливаем новый выбор на случай повторного открытия.
             resetCards();
             
             // Пробуем закрыть VK Mini App
@@ -352,7 +356,7 @@
             isSending = false;
 
             btn.disabled = false;
-            btn.innerText = "ПОДТВЕРДИТЬ ВЫБОР";
+            btn.innerText = isOneCard ? "УЗНАТЬ РЕЗУЛЬТАТ" : "ПОДТВЕРДИТЬ ВЫБОР";
 
             alert("Не удалось отправить карты. Попробуй снова.");
         }
