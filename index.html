@@ -124,6 +124,11 @@
     <button id="confirm-btn">ПОДТВЕРДИТЬ ВЫБОР</button>
 
     <script>
+        if (window.location.hash === "#one") {
+        const target = new URL("one-card.html", window.location.href);
+        target.search = window.location.search;
+        window.location.replace(target.toString());
+        }
         vkBridge.send('VKWebAppInit')
         .catch(console.error);
 
