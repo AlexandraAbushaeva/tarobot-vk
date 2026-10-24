@@ -135,47 +135,6 @@
 
     <script>
 
-    // Один VK Mini App — два режима, без переходов на другую страницу.
-    // Приоритет: новый маршрут от VK, затем hash, затем параметры запуска.
-    let bridgeRoute = null;
-
-    function normalizeMode(value) {
-        if (!value) return null;
-        let candidate = String(value).replace(/^#/, "").toLowerCase();
-        try { candidate = decodeURIComponent(candidate); } catch (_) {}
-        return candidate === "one" || candidate === "three" ? candidate : null;
-    }
-
-    function getLaunchMode() {
-        const params = new URLSearchParams(window.location.search);
-        return normalizeMode(bridgeRoute) ||
-            normalizeMode(window.location.hash) ||
-            normalizeMode(params.get("vk_app_start_param")) ||
-            normalizeMode(params.get("vk_start_param")) ||
-            normalizeMode(params.get("mode")) ||
-            "three";
-    }
-
-    let isOneCard = getLaunchMode() === "one";
-    let cardsToSelect = isOneCard ? 1 : 3;
-    let cardsToShow = isOneCard ? 3 : 5;
-
-    function updateMode(forceReset = false) {
-        const newIsOneCard = getLaunchMode() === "one";
-        const changed = newIsOneCard !== isOneCard;
-        if (!changed && !forceReset) return;
-
-        isOneCard = newIsOneCard;
-        cardsToSelect = isOneCard ? 1 : 3;
-        cardsToShow = isOneCard ? 3 : 5;
-        document.querySelector("h3").innerText =
-            isOneCard ? "Выберите карту" : "Выберите 3 карты";
-        resetCards();
-    }
-
-    const header = document.querySelector("h3");
-    header.innerText = isOneCard ? "Выберите карту" : "Выберите 3 карты";
-
     // Инициализация VK Mini App
     vkBridge.send('VKWebAppInit')
         .catch(console.error);
@@ -251,6 +210,7 @@
 
     let selected = [];
     let isSending = false;
+    let resetTimer = null;
 
     // Перемешивание полной колоды
     function shuffleDeck() {
@@ -262,11 +222,16 @@
             [cards[i], cards[j]] = [cards[j], cards[i]];
         }
 
-        return cards.slice(0, cardsToShow);
+        return cards.slice(0, 5);
     }
 
     // Создание нового расклада
     function resetCards() {
+
+        if (resetTimer !== null) {
+            clearTimeout(resetTimer);
+            resetTimer = null;
+        }
 
         selected = [];
         isSending = false;
@@ -275,7 +240,7 @@
 
         btn.style.display = "none";
         btn.disabled = false;
-        btn.innerText = isOneCard ? "УЗНАТЬ РЕЗУЛЬТАТ" : "ПОДТВЕРДИТЬ ВЫБОР";
+        btn.innerText = "ПОДТВЕРДИТЬ ВЫБОР";
 
         const shuffled = shuffleDeck();
 
@@ -299,7 +264,7 @@
                 if (isSending) return;
 
                 if (
-                    selected.length < cardsToSelect &&
+                    selected.length < 3 &&
                     !container.classList.contains('flipped')
                 ) {
 
@@ -307,7 +272,7 @@
 
                     selected.push(card.name);
 
-                    if (selected.length === cardsToSelect) {
+                    if (selected.length === 3) {
 
                         btn.style.display = 'block';
 
@@ -327,7 +292,7 @@
     // Отправка выбора в Google Apps Script
     btn.onclick = async () => {
 
-        if (selected.length !== cardsToSelect || isSending) return;
+        if (selected.length !== 3 || isSending) return;
 
         isSending = true;
 
@@ -360,7 +325,7 @@
 
             btn.innerText = "КАРТЫ ОТПРАВЛЕНЫ ✓";
 
-            // Подготавливаем новый выбор на случай повторного открытия.
+            // Сбрасываем карты перед закрытием
             resetCards();
             
             // Пробуем закрыть VK Mini App
@@ -379,7 +344,7 @@
             isSending = false;
 
             btn.disabled = false;
-            btn.innerText = isOneCard ? "УЗНАТЬ РЕЗУЛЬТАТ" : "ПОДТВЕРДИТЬ ВЫБОР";
+            btn.innerText = "ПОДТВЕРДИТЬ ВЫБОР";
 
             alert("Не удалось отправить карты. Попробуй снова.");
         }
@@ -387,30 +352,6 @@
 
     // Первый запуск: создаём новый набор карт
     resetCards();
-
-    // Смена маршрута внутри текущего WebView.
-    window.addEventListener("hashchange", () => {
-        bridgeRoute = null;
-        updateMode();
-    });
-
-    // Восстановление Mini App после сворачивания и изменение адреса VK.
-    vkBridge.subscribe((event) => {
-        const type = event?.detail?.type;
-        if (type === "VKWebAppLocationChanged") {
-            const location = event?.detail?.data?.location;
-            const incoming = normalizeMode(location);
-            if (incoming) bridgeRoute = incoming;
-            else bridgeRoute = null;
-            updateMode(true);
-        } else if (type === "VKWebAppViewRestore") {
-            updateMode(true);
-        }
-    });
-
-    window.addEventListener("pageshow", (event) => {
-        if (event.persisted) updateMode(true);
-    });
 
     </script>
 </body>
