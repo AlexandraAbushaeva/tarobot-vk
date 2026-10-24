@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="referrer" content="no-referrer"> 
+    <title>Таро Расклад</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+    body {
+        font-family: 'Segoe UI', sans-serif;
+        background: #1a1a1a url('bg.jpg') no-repeat center center fixed;
+        background-size: cover;
+        color: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        margin: 0;
+        overflow: hidden;
+    }
+
+    h3 { 
+        text-transform: uppercase; 
+        text-shadow: 0 0 10px rgba(255, 215, 0, 0.5), 2px 2px 4px black;
+        margin-bottom: 25px;
+        letter-spacing: 2px;
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(6, 45px);
+        gap: 20px 12px;
+        justify-content: center;
+    }
+
+    .card-container {
+        width: 90px;
+        height: 150px;
+        position: relative;
+        transform-style: preserve-3d;
+        transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+        cursor: pointer;
+        grid-column: span 2;
+        /* Мягкое базовое свечение, чтобы карта не сливалась с фоном */
+        box-shadow: 0 0 15px rgba(255, 215, 0, 0.2), 0 4px 10px rgba(0,0,0,0.5);
+        border-radius: 10px;
+    }
+
+    /* Эффект при наведении — карта «оживает» */
+    .card-container:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0 25px rgba(255, 215, 0, 0.4);
+    }
+
+    .card-container:nth-child(4) { grid-column: 2 / 4; }
+    .card-container:nth-child(5) { grid-column: 4 / 6; }
+
+    .card-container.flipped { 
+        transform: rotateY(180deg); 
+        /* Особое свечение для открытой карты */
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+    }
+
+    .card-face {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        backface-visibility: hidden;
+        border-radius: 10px;
+    }
+
+    .card-front {
+        background: url('back.jpg') no-repeat center center;
+        background-size: cover;
+        border: 1px solid rgba(255, 215, 0, 0.3); /* Тонкая золотая рамка */
+    }
+
+    .card-back {
+        transform: rotateY(180deg);
+        background-color: #000;
+        background-size: cover;
+        background-repeat: no-repeat;
+        background-position: center;
+        border: 2px solid gold;
+        display: flex;
+        align-items: flex-end;
+    }
+
+    .card-name-tag {
+        background: rgba(0, 0, 0, 0.85);
+        color: #fff;
+        font-size: 10px;
+        width: 100%;
+        text-align: center;
+        padding: 5px 0;
+        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
+        font-weight: bold;
+    }
+
+    #confirm-btn {
+        display: none;
+        margin-top: 35px;
+        padding: 15px 50px;
+        background: linear-gradient(135deg, #6e45e2 0%, #a485ff 100%);
+        border: none;
+        color: white;
+        border-radius: 30px;
+        font-weight: bold;
+        text-transform: uppercase;
+        box-shadow: 0 0 20px rgba(110, 69, 226, 0.5);
+        cursor: pointer;
+    }
+
+    .locked { opacity: 0.4; filter: grayscale(0.8); pointer-events: none; }
+</style>
+</head>
+<body>
+
+    <h3 style="text-transform: uppercase; text-shadow: 2px 2px 4px black;">Выберите 3 карты</h3>
+    <div class="grid" id="grid"></div>
+    <button id="confirm-btn">ПОДТВЕРДИТЬ ВЫБОР</button>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        const imgBase = "https://raw.githubusercontent.com/LindseyB/tarot-api/master/public/cards/";
+        const deck = [];
+        
+        const majors = [
+            {n:"Шут", f:"TheFool"}, {n:"Маг", f:"TheMagician"}, {n:"Жрица", f:"TheHighPriestess"},
+            {n:"Императрица", f:"TheEmpress"}, {n:"Император", f:"TheEmperor"}, {n:"Иерофант", f:"TheHierophant"},
+            {n:"Влюбленные", f:"TheLovers"}, {n:"Колесница", f:"TheChariot"}, {n:"Сила", f:"Strength"},
+            {n:"Отшельник", f:"TheHermit"}, {n:"Колесо Фортуны", f:"WheelOfFortune"}, {n:"Справедливость", f:"Justice"},
+            {n:"Повешенный", f:"TheHangedMan"}, {n:"Смерть", f:"Death"}, {n:"Умеренность", f:"Temperance"},
+            {n:"Дьявол", f:"TheDevil"}, {n:"Башня", f:"TheTower"}, {n:"Звезда", f:"TheStar"},
+            {n:"Луна", f:"TheMoon"}, {n:"Солнце", f:"TheSun"}, {n:"Суд", f:"Judgement"}, {n:"Мир", f:"TheWorld"}
+        ];
+        majors.forEach(m => deck.push({ name: m.n, img: m.f + ".png" }));
+
+        const suits = [
+            {id:"Wands", ru:"Жезлов"}, {id:"Cups", ru:"Кубков"}, 
+            {id:"Swords", ru:"Мечей"}, {id:"Pentacles", ru:"Пентаклей"}
+        ];
+        const rankFiles = ["01","02","03","04","05","06","07","08","09","10","11","12","13","14"];
+        const rankNames = ["Туз","2","3","4","5","6","7","8","9","10","Паж","Рыцарь","Королева","Король"];
+
+        suits.forEach(suit => {
+            rankFiles.forEach((f, i) => {
+                deck.push({ name: rankNames[i] + " " + suit.ru, img: suit.id + f + ".png" });
+            });
+        });
+
+        const shuffled = deck.sort(() => 0.5 - Math.random()).slice(0, 5);
+        let selected = [];
+        const grid = document.getElementById('grid');
+        const btn = document.getElementById('confirm-btn');
+
+        shuffled.forEach(card => {
+            const container = document.createElement('div');
+            container.className = 'card-container';
+            // Добавляем ?v=1 для обхода кэша Telegram
+            const finalImgUrl = imgBase + card.img + "?v=1";
+
+            container.innerHTML = `
+                <div class="card-face card-front"></div>
+                <div class="card-face card-back" style="background-image: url('${finalImgUrl}')">
+                    <div class="card-name-tag">${card.name}</div>
+                </div>
+            `;
+            
+            container.onclick = () => {
+                if (selected.length < 3 && !container.classList.contains('flipped')) {
+                    container.classList.add('flipped');
+                    selected.push(card.name);
+                    if (selected.length === 3) {
+                        btn.style.display = 'block';
+                        document.querySelectorAll('.card-container:not(.flipped)').forEach(c => c.classList.add('locked'));
+                    }
+                }
+            };
+            grid.appendChild(container);
+        });
+
+        btn.onclick = async () => {
+            btn.disabled = true;
+            btn.innerText = "ОТПРАВКА...";
+            const userId = tg.initDataUnsafe?.user?.id || "test_user";
+            const scriptURL = "https://script.google.com/macros/s/AKfycbyD0tPoh7h1YNWAiASIyux-FiQKGO6aZidwS7ltlk991ve1_NGJpoPF46IuUp6maDbJ/exec";
+            try {
+                await fetch(`${scriptURL}?user_id=${userId}&cards=${encodeURIComponent(selected.join(", "))}`, { mode: 'no-cors' });
+                tg.close();
+            } catch(e) {
+                btn.disabled = false;
+                btn.innerText = "ПОДТВЕРДИТЬ ВЫБОР";
+            }
+        };
+    </script>
+</body>
+</html>
