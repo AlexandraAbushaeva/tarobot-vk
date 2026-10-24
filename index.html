@@ -333,10 +333,17 @@
 
             btn.innerText = "КАРТЫ ОТПРАВЛЕНЫ ✓";
 
-            // Сбрасываем интерфейс без перезагрузки страницы
-            resetTimer = setTimeout(() => {
-                resetCards();
-            }, 1000);
+            // Сбрасываем карты перед закрытием
+            resetCards();
+            
+            // Пробуем закрыть VK Mini App
+            try {
+                await vkBridge.send("VKWebAppClose", {
+                    status: "success"
+                });
+            } catch (error) {
+                console.warn("VK не разрешил закрыть приложение:", error);
+            }
 
         } catch (error) {
 
