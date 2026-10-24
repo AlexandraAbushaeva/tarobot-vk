@@ -206,6 +206,18 @@
                 });
 
                 btn.innerText = "КАРТА ОТПРАВЛЕНА ✓";
+                // Сбрасываем выбор после отправки
+                selected = [];
+                
+                document.getElementById('header').innerText = "Выберите карту";
+                
+                document.querySelectorAll('.card-container').forEach(card => {
+                    card.classList.remove('flipped', 'locked');
+                });
+                
+                btn.style.display = "none";
+                btn.disabled = false;
+                btn.innerText = "УЗНАТЬ РЕЗУЛЬТАТ";
             } catch (error) {
                 console.error("Не удалось отправить карту:", error);
                 btn.disabled = false;
