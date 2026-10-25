@@ -57,8 +57,13 @@
         box-shadow: 0 0 25px rgba(255, 215, 0, 0.4);
     }
 
-    .card-container:nth-child(4) { grid-column: 2 / 4; }
-    .card-container:nth-child(5) { grid-column: 4 / 6; }
+    .card-container:nth-child(4) {
+        grid-column: 2 / 4;
+    }
+
+    .card-container:nth-child(5) {
+        grid-column: 4 / 6;
+    }
 
     .card-container.flipped {
         transform: rotateY(180deg);
@@ -127,231 +132,299 @@
 
 <body>
 
-    <h3 style="text-transform: uppercase; text-shadow: 2px 2px 4px black;">Выберите 3 карты</h3>
-
+    <h3 id="header">Выберите 3 карты</h3>
     <div class="grid" id="grid"></div>
-
     <button id="confirm-btn">ПОДТВЕРДИТЬ ВЫБОР</button>
 
     <script>
+        // Инициализация VK Mini App
+        vkBridge.send('VKWebAppInit')
+            .catch(console.error);
 
-    // Инициализация VK Mini App
-    vkBridge.send('VKWebAppInit')
-        .catch(console.error);
+        // Google Apps Script
+        const scriptURL = "https://script.google.com/macros/s/AKfycbyD0tPoh7h1YNWAiASIyux-FiQKGO6aZidwS7ltlk991ve1_NGJpoPF46IuUp6maDbJ/exec";
 
-    // Google Apps Script
-    const scriptURL = "https://script.google.com/macros/s/AKfycbyD0tPoh7h1YNWAiASIyux-FiQKGO6aZidwS7ltlk991ve1_NGJpoPF46IuUp6maDbJ/exec";
+        // Изображения карт
+        const imgBase = "https://raw.githubusercontent.com/LindseyB/tarot-api/master/public/cards/";
 
-    // Изображения карт
-    const imgBase = "https://raw.githubusercontent.com/LindseyB/tarot-api/master/public/cards/";
+        const deck = [];
 
-    const deck = [];
+        const majors = [
+            {n:"Шут", f:"TheFool"},
+            {n:"Маг", f:"TheMagician"},
+            {n:"Жрица", f:"TheHighPriestess"},
+            {n:"Императрица", f:"TheEmpress"},
+            {n:"Император", f:"TheEmperor"},
+            {n:"Иерофант", f:"TheHierophant"},
+            {n:"Влюбленные", f:"TheLovers"},
+            {n:"Колесница", f:"TheChariot"},
+            {n:"Сила", f:"Strength"},
+            {n:"Отшельник", f:"TheHermit"},
+            {n:"Колесо Фортуны", f:"WheelOfFortune"},
+            {n:"Справедливость", f:"Justice"},
+            {n:"Повешенный", f:"TheHangedMan"},
+            {n:"Смерть", f:"Death"},
+            {n:"Умеренность", f:"Temperance"},
+            {n:"Дьявол", f:"TheDevil"},
+            {n:"Башня", f:"TheTower"},
+            {n:"Звезда", f:"TheStar"},
+            {n:"Луна", f:"TheMoon"},
+            {n:"Солнце", f:"TheSun"},
+            {n:"Суд", f:"Judgement"},
+            {n:"Мир", f:"TheWorld"}
+        ];
 
-    const majors = [
-        {n:"Шут", f:"TheFool"},
-        {n:"Маг", f:"TheMagician"},
-        {n:"Жрица", f:"TheHighPriestess"},
-        {n:"Императрица", f:"TheEmpress"},
-        {n:"Император", f:"TheEmperor"},
-        {n:"Иерофант", f:"TheHierophant"},
-        {n:"Влюбленные", f:"TheLovers"},
-        {n:"Колесница", f:"TheChariot"},
-        {n:"Сила", f:"Strength"},
-        {n:"Отшельник", f:"TheHermit"},
-        {n:"Колесо Фортуны", f:"WheelOfFortune"},
-        {n:"Справедливость", f:"Justice"},
-        {n:"Повешенный", f:"TheHangedMan"},
-        {n:"Смерть", f:"Death"},
-        {n:"Умеренность", f:"Temperance"},
-        {n:"Дьявол", f:"TheDevil"},
-        {n:"Башня", f:"TheTower"},
-        {n:"Звезда", f:"TheStar"},
-        {n:"Луна", f:"TheMoon"},
-        {n:"Солнце", f:"TheSun"},
-        {n:"Суд", f:"Judgement"},
-        {n:"Мир", f:"TheWorld"}
-    ];
-
-    majors.forEach(m => {
-        deck.push({
-            name: m.n,
-            img: m.f + ".png"
-        });
-    });
-
-    const suits = [
-        {id:"Wands", ru:"Жезлов"},
-        {id:"Cups", ru:"Кубков"},
-        {id:"Swords", ru:"Мечей"},
-        {id:"Pentacles", ru:"Пентаклей"}
-    ];
-
-    const rankFiles = [
-        "01","02","03","04","05","06","07",
-        "08","09","10","11","12","13","14"
-    ];
-
-    const rankNames = [
-        "Туз","2","3","4","5","6","7",
-        "8","9","10","Паж","Рыцарь","Королева","Король"
-    ];
-
-    suits.forEach(suit => {
-        rankFiles.forEach((f, i) => {
+        majors.forEach(m => {
             deck.push({
-                name: rankNames[i] + " " + suit.ru,
-                img: suit.id + f + ".png"
+                name: m.n,
+                img: m.f + ".png"
             });
         });
-    });
 
-    const grid = document.getElementById('grid');
-    const btn = document.getElementById('confirm-btn');
+        const suits = [
+            {id:"Wands", ru:"Жезлов"},
+            {id:"Cups", ru:"Кубков"},
+            {id:"Swords", ru:"Мечей"},
+            {id:"Pentacles", ru:"Пентаклей"}
+        ];
 
-    let selected = [];
-    let isSending = false;
-    let resetTimer = null;
+        const rankFiles = [
+            "01","02","03","04","05","06","07",
+            "08","09","10","11","12","13","14"
+        ];
 
-    // Перемешивание полной колоды
-    function shuffleDeck() {
-        const cards = [...deck];
+        const rankNames = [
+            "Туз","2","3","4","5","6","7",
+            "8","9","10","Паж","Рыцарь","Королева","Король"
+        ];
 
-        for (let i = cards.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-
-            [cards[i], cards[j]] = [cards[j], cards[i]];
-        }
-
-        return cards.slice(0, 5);
-    }
-
-    // Создание нового расклада
-    function resetCards() {
-
-        if (resetTimer !== null) {
-            clearTimeout(resetTimer);
-            resetTimer = null;
-        }
-
-        selected = [];
-        isSending = false;
-
-        grid.innerHTML = "";
-
-        btn.style.display = "none";
-        btn.disabled = false;
-        btn.innerText = "ПОДТВЕРДИТЬ ВЫБОР";
-
-        const shuffled = shuffleDeck();
-
-        shuffled.forEach(card => {
-
-            const container = document.createElement('div');
-
-            container.className = 'card-container';
-
-            const finalImgUrl = imgBase + card.img + "?v=1";
-
-            container.innerHTML = `
-                <div class="card-face card-front"></div>
-                <div class="card-face card-back" style="background-image: url('${finalImgUrl}')">
-                    <div class="card-name-tag">${card.name}</div>
-                </div>
-            `;
-
-            container.onclick = () => {
-
-                if (isSending) return;
-
-                if (
-                    selected.length < 3 &&
-                    !container.classList.contains('flipped')
-                ) {
-
-                    container.classList.add('flipped');
-
-                    selected.push(card.name);
-
-                    if (selected.length === 3) {
-
-                        btn.style.display = 'block';
-
-                        document.querySelectorAll(
-                            '.card-container:not(.flipped)'
-                        ).forEach(c => {
-                            c.classList.add('locked');
-                        });
-                    }
-                }
-            };
-
-            grid.appendChild(container);
-        });
-    }
-
-    // Отправка выбора в Google Apps Script
-    btn.onclick = async () => {
-
-        if (selected.length !== 3 || isSending) return;
-
-        isSending = true;
-
-        btn.disabled = true;
-        btn.innerText = "ОТПРАВКА...";
-
-        try {
-
-            const user = await vkBridge.send(
-                "VKWebAppGetUserInfo"
-            );
-
-            const userId = user.id;
-
-            if (!userId) {
-                throw new Error("Не получен VK ID");
-            }
-
-            const url = new URL(scriptURL);
-
-            url.searchParams.set("user_id", String(userId));
-            url.searchParams.set("cards", selected.join(", "));
-            url.searchParams.set("_t", String(Date.now()));
-
-            await fetch(url.toString(), {
-                method: "GET",
-                mode: "no-cors",
-                cache: "no-store"
-            });
-
-            btn.innerText = "КАРТЫ ОТПРАВЛЕНЫ ✓";
-
-            // Сбрасываем карты перед закрытием
-            resetCards();
-            
-            // Пробуем закрыть VK Mini App
-            try {
-                await vkBridge.send("VKWebAppClose", {
-                    status: "success"
+        suits.forEach(suit => {
+            rankFiles.forEach((f, i) => {
+                deck.push({
+                    name: rankNames[i] + " " + suit.ru,
+                    img: suit.id + f + ".png"
                 });
-            } catch (error) {
-                console.warn("VK не разрешил закрыть приложение:", error);
+            });
+        });
+
+        const grid = document.getElementById('grid');
+        const btn = document.getElementById('confirm-btn');
+        const header = document.getElementById('header');
+
+        let selected = [];
+        let isSending = false;
+        let completed = false;
+        let wasHidden = false;
+
+        // Перемешивание полной колоды
+        function shuffleDeck() {
+            const cards = [...deck];
+
+            for (let i = cards.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+
+                [cards[i], cards[j]] = [cards[j], cards[i]];
             }
 
-        } catch (error) {
+            return cards.slice(0, 5);
+        }
 
-            console.error("Ошибка отправки карт:", error);
-
+        // Создание нового расклада
+        function resetCards() {
+            selected = [];
             isSending = false;
+            completed = false;
+            wasHidden = false;
 
+            grid.innerHTML = "";
+            grid.style.display = "grid";
+
+            header.innerText = "Выберите 3 карты";
+
+            btn.style.display = "none";
             btn.disabled = false;
             btn.innerText = "ПОДТВЕРДИТЬ ВЫБОР";
 
-            alert("Не удалось отправить карты. Попробуй снова.");
-        }
-    };
+            const shuffled = shuffleDeck();
 
-    // Первый запуск: создаём новый набор карт
-    resetCards();
+            shuffled.forEach(card => {
+                const container = document.createElement('div');
+                container.className = 'card-container';
+
+                const finalImgUrl = imgBase + card.img + "?v=1";
+
+                container.innerHTML = `
+                    <div class="card-face card-front"></div>
+                    <div class="card-face card-back" style="background-image: url('${finalImgUrl}')">
+                        <div class="card-name-tag">${card.name}</div>
+                    </div>
+                `;
+
+                container.onclick = () => {
+                    if (isSending || completed) return;
+
+                    if (
+                        selected.length < 3 &&
+                        !container.classList.contains('flipped')
+                    ) {
+                        container.classList.add('flipped');
+                        selected.push(card.name);
+
+                        if (selected.length === 3) {
+                            btn.style.display = 'block';
+
+                            document.querySelectorAll(
+                                '.card-container:not(.flipped)'
+                            ).forEach(c => {
+                                c.classList.add('locked');
+                            });
+                        }
+                    }
+                };
+
+                grid.appendChild(container);
+            });
+        }
+
+        // Сообщение после отправки карт
+        function showSuccess() {
+            completed = true;
+
+            grid.style.display = "none";
+            btn.style.display = "none";
+
+            header.innerText = "Ваш выбор зафиксирован! ✨";
+
+            const message = document.createElement("div");
+            message.id = "success-message";
+
+            message.style.textAlign = "center";
+            message.style.maxWidth = "300px";
+            message.style.padding = "20px";
+            message.style.lineHeight = "1.7";
+            message.style.color = "#ffffff";
+            message.style.fontSize = "16px";
+            message.style.textShadow = "1px 2px 5px black";
+
+            message.innerHTML = `
+                <p>🔮 Три карты выбраны!</p>
+                <p>
+                    Закройте приложение и вернитесь
+                    в чат с ботом, чтобы получить
+                    свой расклад.
+                </p>
+            `;
+
+            document.body.appendChild(message);
+        }
+
+        // Подготавливаем новый расклад
+        function startNewReading() {
+            const message = document.getElementById(
+                "success-message"
+            );
+
+            if (message) {
+                message.remove();
+            }
+
+            resetCards();
+        }
+
+        // Отправка карт в Google Apps Script
+        btn.onclick = async () => {
+            if (
+                selected.length !== 3 ||
+                isSending ||
+                completed
+            ) return;
+
+            isSending = true;
+
+            btn.disabled = true;
+            btn.innerText = "ОТПРАВКА...";
+
+            try {
+                const user = await vkBridge.send(
+                    "VKWebAppGetUserInfo"
+                );
+
+                const userId = user.id;
+
+                if (!userId) {
+                    throw new Error("Не получен VK ID");
+                }
+
+                const url = new URL(scriptURL);
+
+                url.searchParams.set(
+                    "user_id", String(userId)
+                );
+
+                url.searchParams.set(
+                    "cards", selected.join(", ")
+                );
+
+                url.searchParams.set(
+                    "_t", String(Date.now())
+                );
+
+                await fetch(url.toString(), {
+                    method: "GET",
+                    mode: "no-cors",
+                    cache: "no-store"
+                });
+
+                showSuccess();
+
+            } catch (error) {
+                console.error(
+                    "Не удалось отправить карты:",
+                    error
+                );
+
+                isSending = false;
+                btn.disabled = false;
+                btn.innerText = "ПОДТВЕРДИТЬ ВЫБОР";
+
+                alert(
+                    "Не удалось отправить карты. Попробуйте снова."
+                );
+            }
+        };
+
+        // Отслеживаем выход из приложения
+        document.addEventListener(
+            "visibilitychange",
+            () => {
+                if (document.hidden) {
+                    wasHidden = true;
+                } else if (wasHidden && completed) {
+                    startNewReading();
+                }
+            }
+        );
+
+        // Возврат из кэша браузера
+        window.addEventListener("pageshow", (event) => {
+            if (event.persisted && completed) {
+                startNewReading();
+            }
+        });
+
+        // Восстановление VK Mini App
+        vkBridge.subscribe((event) => {
+            if (
+                event.detail.type === "VKWebAppViewRestore" &&
+                completed &&
+                wasHidden
+            ) {
+                startNewReading();
+            }
+        });
+
+        // Первый запуск
+        resetCards();
 
     </script>
 </body>
