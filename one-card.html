@@ -126,14 +126,11 @@
     <button id="confirm-btn">УЗНАТЬ РЕЗУЛЬТАТ</button>
 
     <script>
-        // Инициализация VK Mini App
         vkBridge.send('VKWebAppInit')
             .catch(console.error);
 
-        // Google Apps Script
         const scriptURL = "https://script.google.com/macros/s/AKfycbyD0tPoh7h1YNWAiASIyux-FiQKGO6aZidwS7ltlk991ve1_NGJpoPF46IuUp6maDbJ/exec";
 
-        // Изображения карт
         const imgBase = "https://raw.githubusercontent.com/LindseyB/tarot-api/master/public/cards/";
 
         const deck = [];
@@ -202,26 +199,28 @@
 
         let selected = [];
         let isSending = false;
+        let completed = false;
+        let wasHidden = false;
 
-        // Случайно выбираем три карты из колоды
         function shuffleDeck() {
             const cards = [...deck];
 
             for (let i = cards.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
-
                 [cards[i], cards[j]] = [cards[j], cards[i]];
             }
 
             return cards.slice(0, 3);
         }
 
-        // Создание нового выбора
         function resetCards() {
             selected = [];
             isSending = false;
+            completed = false;
+            wasHidden = false;
 
             grid.innerHTML = "";
+            grid.style.display = "grid";
 
             header.innerText = "Выберите карту";
 
@@ -245,7 +244,7 @@
                 `;
 
                 container.onclick = () => {
-                    if (isSending) return;
+                    if (isSending || completed) return;
 
                     if (
                         selected.length < 1 &&
@@ -269,9 +268,58 @@
             });
         }
 
+        // Экран после подтверждения выбора
+        function showSuccess() {
+            completed = true;
+
+            grid.style.display = "none";
+            btn.style.display = "none";
+
+            header.innerText = "Ваш выбор зафиксирован! ✨";
+
+            const message = document.createElement("div");
+            message.id = "success-message";
+
+            message.style.textAlign = "center";
+            message.style.maxWidth = "300px";
+            message.style.padding = "20px";
+            message.style.lineHeight = "1.7";
+            message.style.color = "#ffffff";
+            message.style.fontSize = "16px";
+            message.style.textShadow = "1px 2px 5px black";
+
+            message.innerHTML = `
+                <p>🔮 Карта выбрана!</p>
+                <p>
+                    Закройте приложение и вернитесь
+                    в чат с ботом, чтобы получить
+                    свой расклад.
+                </p>
+            `;
+
+            document.body.appendChild(message);
+        }
+
+        // Подготовка нового расклада
+        function startNewReading() {
+            const message = document.getElementById(
+                "success-message"
+            );
+
+            if (message) {
+                message.remove();
+            }
+
+            resetCards();
+        }
+
         // Отправка выбранной карты
         btn.onclick = async () => {
-            if (selected.length !== 1 || isSending) return;
+            if (
+                selected.length !== 1 ||
+                isSending ||
+                completed
+            ) return;
 
             isSending = true;
 
@@ -291,9 +339,15 @@
 
                 const url = new URL(scriptURL);
 
-                url.searchParams.set("user_id", String(userId));
-                url.searchParams.set("cards", selected[0]);
-                url.searchParams.set("_t", String(Date.now()));
+                url.searchParams.set(
+                    "user_id", String(userId)
+                );
+                url.searchParams.set(
+                    "cards", selected[0]
+                );
+                url.searchParams.set(
+                    "_t", String(Date.now())
+                );
 
                 await fetch(url.toString(), {
                     method: "GET",
@@ -301,22 +355,7 @@
                     cache: "no-store"
                 });
 
-                btn.innerText = "КАРТА ОТПРАВЛЕНА ✓";
-
-                // Подготавливаем новый выбор
-                resetCards();
-
-                // Пытаемся закрыть VK Mini App
-                try {
-                    await vkBridge.send("VKWebAppClose", {
-                        status: "success"
-                    });
-                } catch (closeError) {
-                    console.warn(
-                        "VK не закрыл приложение:",
-                        closeError
-                    );
-                }
+                showSuccess();
 
             } catch (error) {
                 console.error(
@@ -329,10 +368,40 @@
                 btn.innerText = "УЗНАТЬ РЕЗУЛЬТАТ";
 
                 alert(
-                    "Не удалось отправить карту. Попробуй снова."
+                    "Не удалось отправить карту. Попробуйте снова."
                 );
             }
         };
+
+        // Когда пользователь уходит из приложения
+        document.addEventListener(
+            "visibilitychange",
+            () => {
+                if (document.hidden) {
+                    wasHidden = true;
+                } else if (wasHidden && completed) {
+                    startNewReading();
+                }
+            }
+        );
+
+        // Восстановление страницы из кэша браузера
+        window.addEventListener("pageshow", (event) => {
+            if (event.persisted && completed) {
+                startNewReading();
+            }
+        });
+
+        // Восстановление VK Mini App
+        vkBridge.subscribe((event) => {
+            if (
+                event.detail.type === "VKWebAppViewRestore" &&
+                completed &&
+                wasHidden
+            ) {
+                startNewReading();
+            }
+        });
 
         // Первый запуск
         resetCards();
